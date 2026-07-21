@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Abwesenheits-Planer</title>
+  <!-- Supabase JS Client laden -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    * { box-sizing: border-box; font-family: system-ui, -apple-system, sans-serif; }
+    body { max-width: 800px; margin: 40px auto; padding: 0 20px; background: #f8fafc; color: #1e293b; }
+    h1 { color: #0f172a; margin-bottom: 24px; }
+    .card { background: white; padding: 24px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 24px; }
+    .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 16px; }
+    label { display: block; font-size: 14px; font-weight: 600; margin-bottom: 6px; }
+    input, select { width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px; }
+    button { background: #2563eb; color: white; border: none; padding: 10px 20px; border-radius: 6px; font-weight: 600; cursor: pointer; transition: background 0.2s; }
+    button:hover { background: #1d4ed8; }
+    table { width: 100%; border-collapse: collapse; text-align: left; }
+    th, td { padding: 12px; border-bottom: 1px solid #e2e8f0; }
+    th { background: #f1f5f9; font-weight: 600; }
+    .badge { padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 600; }
+    .urlaub { background: #dbeafe; color: #1e40af; }
+    .krank { background: #fee2e2; color: #991b1b; }
+    .homeoffice { background: #fef3c7; color: #92400e; }
+  </style>
+</head>
+<body>
+
+  <h1>📅 Abwesenheits-Planer</h1>
+
+  <!-- Formular zum Eintragen -->
+  <div class="card">
+    <h2>Neue Abwesenheit eintragen</h2>
+    <form id="absenceForm">
+      <div class="form-grid">
+        <div>
+          <label for="name">Mitarbeiter Name</label>
+          <input type="text" id="name" required placeholder="z. B. Max Mustermann">
+        </div>
+        <div>
+          <label for="type">Art der Abwesenheit</label>
+          <select id="type" required>
+            <option value="Urlaub">Urlaub</option>
+            <option value="Krank">Krankheit</option>
+            <option value="Homeoffice">Homeoffice</option>
+          </select>
+        </div>
+        <div>
+          <label for="startDate">Von</label>
+          <input type="date" id="startDate" required>
+        </div>
+        <div>
+          <label for="endDate">Bis</label>
+          <input type="date" id="endDate" required>
+        </div>
+      </div>
+      <button type="submit">Eintragen</button>
+    </form>
+  </div>
+
+  <!-- Tabelle der Abwesenheiten -->
+  <div class="card">
+    <h2>Eingetragene Abwesenheiten</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Art</th>
+          <th>Von</th>
+          <th>Bis</th>
+        </tr>
+      </thead>
+      <tbody id="absenceTable">
+        <tr><td colspan="4">Lade Daten...</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <script>
+  // ⚠️ ERSETZE DIESE BEIDEN WERTE MIT DEINEN SUPABASE-DATEN:
+  const SUPABASE_URL = 'https://tqdgdkcjpmcoqvusoglp.supabase.co/rest/v1/';
+  const SUPABASE_ANON_KEY = 'sb_secret_J7sEbXhsJ8ohVPZoJFLErQ_yiET3l8g';
+
+  // Hier lag der Fehler: 'supabase' -> 'supabaseClient' umbenannt
+  const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  // Daten aus der Datenbank laden & anzeigen
+  async function fetchAbsences() {
+    const { data, error } = await supabaseClient
+      .from('absences')
+      .select('*')
+      .order('start_date', { ascending: true });
+
+    if (error) {
+      console.error('Fehler beim Laden:', error);
+      return;
+    }
+
+    const tbody = document.getElementById('absenceTable');
+    tbody.innerHTML = '';
+
+    if (!data || data.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="4">Keine Abwesenheiten eingetragen.</td></tr>';
+      return;
+    }
+
+    data.forEach(item => {
+      const badgeClass = item.type ? item.type.toLowerCase() : '';
+      const row = `
+        <tr>
+          <td><strong>${item.name}</strong></td>
+          <td><span class="badge ${badgeClass}">${item.type}</span></td>
+          <td>${item.start_date}</td>
+          <td>${item.end_date}</td>
+        </tr>
+      `;
+      tbody.innerHTML += row;
+    });
+  }
+
+  // Neue Abwesenheit speichern
+  document.getElementById('absenceForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const newAbsence = {
+      name: document.getElementById('name').value,
+      type: document.getElementById('type').value,
+      start_date: document.getElementById('startDate').value,
+      end_date: document.getElementById('endDate').value
+    };
+
+    const { error } = await supabaseClient.from('absences').insert([newAbsence]);
+
+    if (error) {
+      alert('Fehler beim Speichern: ' + error.message);
+      console.error('Speicherfehler:', error);
+    } else {
+      document.getElementById('absenceForm').reset();
+      fetchAbsences(); // Liste aktualisieren
+    }
+  });
+
+  // Initiales Laden beim Seitenaufruf
+  fetchAbsences();
+</script></body>
+</html>
