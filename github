@@ -1,0 +1,7 @@
+Bash
+git init
+git add .
+git commit -m "Initial commit"
+git branch -M main
+git remote add origin https://github.com/Arc-cloud123/abwesenheitsplaner.git
+git push -u origin main
